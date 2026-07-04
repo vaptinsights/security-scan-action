@@ -103,6 +103,12 @@ Each service is scanned independently and uploaded as a separate VAPT Insights a
 | `scan-path` | No | `.` | Repository folder to scan |
 | `artifact-version` | No | Short commit SHA | Artifact version |
 
+## Documentation
+
+For complete CI/CD, nested-folder, and monorepo instructions, see the
+[VAPT Insights documentation](https://docs.vaptinsights.com/integrations/pipeline/).
+
+
 ## Security
 
 Never place your API key directly in workflow YAML. Always use GitHub Actions secrets.
