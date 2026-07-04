@@ -1,0 +1,26 @@
+name: Test VAPT Insights Action
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-action:
+    name: Test security scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Test local Action
+        uses: ./
+        with:
+          api-key: ${{ secrets.VAPT_INSIGHTS_API_KEY }}
+          scan-path: .
+          artifact-name: security-scan-action-test
+          artifact-version: ${{ github.sha }}
