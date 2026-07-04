@@ -1,0 +1,38 @@
+name: VAPT Insights Monorepo Scan
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  security-scan:
+    name: Scan ${{ matrix.service.name }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - name: ui
+            path: ui
+
+          - name: sms-service
+            path: services/sms-service
+
+          - name: api-service
+            path: services/api-service
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Scan ${{ matrix.service.name }}
+        uses: vaptinsights/security-scan-action@v1
+        with:
+          api-key: ${{ secrets.VAPT_INSIGHTS_API_KEY }}
+          scan-path: ${{ matrix.service.path }}
+          artifact-name: ${{ github.event.repository.name }}/${{ matrix.service.name }}
