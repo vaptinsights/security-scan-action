@@ -1,0 +1,81 @@
+name: VAPT Insights Security Scan
+description: Generate a CycloneDX SBOM with Trivy and upload it to VAPT Insights
+author: VAPT Insights
+
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  api-key:
+    description: VAPT Insights API key
+    required: true
+
+  scan-path:
+    description: Repository folder to scan
+    required: false
+    default: "."
+
+  artifact-name:
+    description: Artifact name displayed in VAPT Insights
+    required: true
+
+  artifact-version:
+    description: Artifact version; defaults to the short commit SHA
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Validate inputs
+      shell: bash
+      env:
+        SCAN_PATH: ${{ inputs.scan-path }}
+      run: |
+        if [[ ! -e "${SCAN_PATH}" ]]; then
+          echo "::error::Scan path does not exist: ${SCAN_PATH}"
+          exit 1
+        fi
+
+    - name: Set up Trivy
+      uses: aquasecurity/setup-trivy@v0.2.6
+      with:
+        cache: true
+
+    - name: Generate CycloneDX SBOM
+      shell: bash
+      env:
+        SCAN_PATH: ${{ inputs.scan-path }}
+      run: |
+        SBOM_FILE="${RUNNER_TEMP}/vapt-insights-sbom.json"
+
+        trivy fs "${SCAN_PATH}" \
+          --format cyclonedx \
+          --output "${SBOM_FILE}" \
+          --scanners vuln
+
+        echo "VAPT_SBOM_FILE=${SBOM_FILE}" >> "${GITHUB_ENV}"
+
+    - name: Upload SBOM to VAPT Insights
+      shell: bash
+      env:
+        VAPT_INSIGHTS_API_KEY: ${{ inputs.api-key }}
+        VAPT_ARTIFACT_NAME: ${{ inputs.artifact-name }}
+        INPUT_ARTIFACT_VERSION: ${{ inputs.artifact-version }}
+      run: |
+        ARTIFACT_VERSION="${INPUT_ARTIFACT_VERSION}"
+
+        if [[ -z "${ARTIFACT_VERSION}" ]]; then
+          ARTIFACT_VERSION="${GITHUB_SHA:0:7}"
+        fi
+
+        curl --fail-with-body --silent --show-error \
+          -X POST "https://svc.vaptinsights.com/webhook/inventory-sbom" \
+          -H "X-API-Key: ${VAPT_INSIGHTS_API_KEY}" \
+          -H "X-Artifact-Name: ${VAPT_ARTIFACT_NAME}" \
+          -H "X-Artifact-Version: ${ARTIFACT_VERSION}" \
+          -H "Content-Type: application/json" \
+          --data-binary "@${VAPT_SBOM_FILE}"
+
+        echo "SBOM uploaded successfully to VAPT Insights."
